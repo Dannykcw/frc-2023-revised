@@ -1,7 +1,7 @@
 // Copyright (c) FIRST and other WPILib contributors.
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
-
+#include <iostream>
 #include "Robot.h"
 
 #include <fmt/core.h>
@@ -71,24 +71,24 @@ double secondsDeltaTime = (double) msDeltaTime / 1000;
 frc::ADIS16470_IMU imu{};
 /* Acceleration X-Axis */ double accelerationX = 0;
 /* Acceleration Y-Axis */ double accelerationY = 0;
+/* Acceleration Z-Axis */ double accelerationZ = 0;
 // /* Filter for X-Axis Acceleration */ frc::LinearFilter<double> Xfilter = frc::LinearFilter<double>::MovingAverage(10);
 // /* Filter for Y-Axis Accceleration */ frc::LinearFilter<double> Yfilter = frc::LinearFilter<double>::MovingAverage(10);
 // /* Filtered X-Acceleration */ double filteredAccelerationX = 0;
 // /* Filtered Y-Acceleration */ double filteredAccelerationY = 0;
 /* Velocity X-Axis */ double velocityX = 0;
 /* Velocty Y-Axis */ double velocityY = 0;
+double velocityZ = 0;
 /* Position X-Axis */ double positionX = 0;
 /* Position Y-Axis */ double positionY = 0;
+double positionZ = 0;
 /* Ticks since last print */ int ticks = 0;
-
+std::vector<double> xyzAcceleration = {accelerationX, accelerationY, accelerationZ};
 
 void Robot::RobotInit() {
   m_chooser.SetDefaultOption(kAutoNameDefault, kAutoNameDefault);
   m_chooser.AddOption(kAutoNameCustom, kAutoNameCustom);
   frc::SmartDashboard::PutData("Auto Modes", &m_chooser);
-
-  //Begin new thread for camera processing
-  std::jthread visionThread(VisionThread);
 }
 
 /**
@@ -181,21 +181,29 @@ void Robot::TeleopPeriodic() {
   //IMU
   /* Acceleration X-Axis */ accelerationX = imu.GetAccelX().value() * secondsDeltaTime;
   /* Acceleration Y-Axis */ accelerationY = imu.GetAccelY().value() * secondsDeltaTime;
+  /* Acceleration Z-Axis */ accelerationZ = imu.GetAccelZ().value() * secondsDeltaTime;
   // /* Filtered X-Acceleration */ filteredAccelerationX = Xfilter.Calculate(accelerationX);
   // /* Filtered Y-Acceleration */ filteredAccelerationY = Yfilter.Calculate(accelerationY);
   // if(((filteredAccelerationX > 0.0006) || (filteredAccelerationX < -0.0006)) || ((filteredAccelerationY > 0.00095) || (filteredAccelerationY < -0.00095))){
-  //   /* Velocity X-Axis */ velocityX += filteredAccelerationX;
-  //   /* Velocty Y-Axis */ velocityY += filteredAccelerationY;
-  //   /* Position X-Axis */ positionX += velocityX;
-  //   /* Position Y-Axis */ positionY += velocityY;
+     /* Velocity X-Axis */ velocityX += accelerationX;
+     /* Velocty Y-Axis */ velocityY += accelerationY;
+     velocityZ += accelerationZ;
+    /* Position X-Axis */ positionX += velocityX;
+    /* Position Y-Axis */ positionY += velocityY;
+    positionZ += velocityZ;
   // }
+  xyzAcceleration = {accelerationX, accelerationY, accelerationZ};
+
 
   //Increases ticks by 1 every 20ms
   ticks++;
   //Every 10 ticks it will print delta time, acceleration, velocity, and position and resets ticks
   if(ticks == 10) {
     fmt::print("Delta Time: {}\n", secondsDeltaTime);
-    fmt::print("[Acceleration: {}, {}, Velocity: {}, {}, Position: {}, {}]\n", /*filteredAccelerationX, filteredAccelerationY,*/ velocityX, velocityY, positionX, positionY);
+    fmt::print("[AccelerationX: {}, AccelerationY: {}, AccelerationZ: {}]\n", imu.GetAccelX().value(), imu.GetAccelY().value(), imu.GetAccelZ().value());
+    fmt::print("positionX: {}, positionY: {}, positionZ: {}\n", positionX, positionY, positionZ);
+    //fmt::print("[XYZ Acceleration: {}]", xyzAcceleration);
+
     ticks = 0;
   }
 
